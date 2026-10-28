@@ -12,9 +12,52 @@ class OaViewModel(application: Application) : AndroidViewModel(application) {
     private val oaDao = AppDatabase.getDatabase(application).oaDao()
     val listaOas: Flow<List<OaEntity>> = oaDao.obtenerTodosLosOas()
 
-    fun guardarOa(oa: OaEntity) {
+    fun validarYGuardarOa(
+        codigo: String,
+        titulo: String,
+        intentosStr: String,
+        fecha: String,
+        requiereAudio: Boolean,
+        publicadoInmediato: Boolean,
+        asignatura: String,
+        descripcion: String,
+        onExito: (OaEntity) -> Unit,
+        onError: (String) -> Unit
+    ) {
+
+        if (codigo.isBlank()) {
+            onError("El código OA no puede estar vacío.")
+            return
+        }
+        if (titulo.isBlank()) {
+            onError("El título no puede estar vacío.")
+            return
+        }
+        val intentos = intentosStr.toIntOrNull()
+        if (intentos == null || intentos <= 0) {
+            onError("Los intentos deben ser un número entero válido (ej: 3).")
+            return
+        }
+        if (fecha.isBlank()) {
+            onError("La fecha de disponibilidad es obligatoria.")
+            return
+        }
+
+        val nuevoOa = OaEntity(
+            codigo = codigo,
+            titulo = titulo,
+            asignatura = asignatura,
+            unidad = "Unidad 1",
+            descripcion = descripcion,
+            tipoRecurso = if (requiereAudio) "Audio / Texto" else "Texto",
+            estado = if (publicadoInmediato) "Publicado" else "Borrador",
+            autoria = "Contenido Propio",
+            fechaModificacion = fecha
+        )
+
         viewModelScope.launch {
-            oaDao.insertarOa(oa)
+            oaDao.insertarOa(nuevoOa)
+            onExito(nuevoOa)
         }
     }
 }

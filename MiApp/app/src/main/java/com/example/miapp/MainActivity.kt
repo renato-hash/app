@@ -54,9 +54,16 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(Screen.FormularioOa.route) {
+                        val context = androidx.compose.ui.platform.LocalContext.current
+
                         FormularioOaScreen(
                             onGuardarOa = { nuevoOa ->
                                 oaViewModel.guardarOa(nuevoOa)
+                                enviarNotificacionLocal(
+                                    context = context,
+                                    titulo = "¡Nueva Actividad Registrada!",
+                                    mensaje = "Se ha publicado un nuevo Objetivo de Aprendizaje en la app."
+                                )
                                 navController.popBackStack()
                             },
                             onVolver = { navController.popBackStack() }
@@ -94,4 +101,27 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+// Pega esto AL FINAL del archivo MainActivity.kt (fuera de la clase MainActivity)
+fun enviarNotificacionLocal(context: android.content.Context, titulo: String, mensaje: String) {
+    val notificationManager = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+    val channelId = "mpaz_canal_alertas"
+
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+        val canal = android.app.NotificationChannel(
+            channelId,
+            "Alertas MPAZ PRO",
+            android.app.NotificationManager.IMPORTANCE_DEFAULT
+        )
+        notificationManager.createNotificationChannel(canal)
+    }
+
+    val notificacion = androidx.core.app.NotificationCompat.Builder(context, channelId)
+        .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setContentTitle(titulo)
+        .setContentText(mensaje)
+        .setAutoCancel(true)
+        .build()
+
+    notificationManager.notify(101, notificacion)
 }

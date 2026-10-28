@@ -2,28 +2,37 @@ package com.example.miapp.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.miapp.data.OaEntity
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.example.miapp.viewmodel.OaViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FormularioOaScreen(
     onGuardarOa: (OaEntity) -> Unit,
-    onVolver: () -> Unit
+    onVolver: () -> Unit,
+    oaViewModel: OaViewModel = viewModel()
 ) {
+    // 1. Campos requeridos (String, Int, Date, Checkbox, Switch)
     var codigo by remember { mutableStateOf("") }
     var titulo by remember { mutableStateOf("") }
+    var intentosStr by remember { mutableStateOf("3") } // Int
+    var fecha by remember { mutableStateOf("2026-11-20") } // Date
+    var requiereAudio by remember { mutableStateOf(true) } // Checkbox
+    var publicadoInmediato by remember { mutableStateOf(true) } // Switch
     var descripcion by remember { mutableStateOf("") }
 
-    // 1. Las 4 asignaturas del nivel exigidas por la rúbrica
     val asignaturas = listOf(
         "Lenguaje y Comunicación",
         "Matemáticas",
@@ -32,19 +41,6 @@ fun FormularioOaScreen(
     )
     var asignaturaSeleccionada by remember { mutableStateOf(asignaturas[0]) }
     var expAsignatura by remember { mutableStateOf(false) }
-
-    // 2. Control de estados de administración
-    val estados = listOf("Borrador", "Aprobado", "Publicado", "Deshabilitado")
-    var estadoSeleccionado by remember { mutableStateOf(estados[0]) }
-    var expEstado by remember { mutableStateOf(false) }
-
-    // 3. Tipos de recursos pedagógicos
-    val recursos = listOf("Texto", "Audio", "Imagen", "Prueba Final")
-    var recursoSeleccionado by remember { mutableStateOf(recursos[0]) }
-
-    // 4. Validación de autoría y licenciamiento
-    val autorias = listOf("Contenido Propio", "Dominio Público", "Autorizado / Licenciado")
-    var autoriaSeleccionada by remember { mutableStateOf(autorias[0]) }
 
     var errorMensaje by remember { mutableStateOf("") }
 
@@ -56,33 +52,71 @@ fun FormularioOaScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "Administración UTP - Gestión de OAs",
+            text = "Administración UTP - Asignar Actividad",
             style = MaterialTheme.typography.headlineSmall
         )
 
         if (errorMensaje.isNotEmpty()) {
-            Text(
-                text = errorMensaje,
-                color = Color.Red,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = errorMensaje,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
         }
+
 
         OutlinedTextField(
             value = codigo,
-            onValueChange = { codigo = it },
-            label = { Text("Código OA (ej: OA_01)") },
+            onValueChange = { codigo = it; errorMensaje = "" },
+            label = { Text("Código OA (String)") },
+            isError = errorMensaje.contains("código", ignoreCase = true),
+            trailingIcon = {
+                if (errorMensaje.contains("código", ignoreCase = true)) {
+                    Icon(Icons.Default.Warning, contentDescription = "Error", tint = Color.Red)
+                }
+            },
             modifier = Modifier.fillMaxWidth()
         )
+
 
         OutlinedTextField(
             value = titulo,
-            onValueChange = { titulo = it },
-            label = { Text("Título / Unidad") },
+            onValueChange = { titulo = it; errorMensaje = "" },
+            label = { Text("Título de la Actividad (String)") },
+            isError = errorMensaje.contains("título", ignoreCase = true),
+            trailingIcon = {
+                if (errorMensaje.contains("título", ignoreCase = true)) {
+                    Icon(Icons.Default.Warning, contentDescription = "Error", tint = Color.Red)
+                }
+            },
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Selección de Asignatura (4 materias)
+
+        OutlinedTextField(
+            value = intentosStr,
+            onValueChange = { intentosStr = it; errorMensaje = "" },
+            label = { Text("Límite de Intentos (Int)") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            isError = errorMensaje.contains("intentos", ignoreCase = true),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+
+        OutlinedTextField(
+            value = fecha,
+            onValueChange = { fecha = it; errorMensaje = "" },
+            label = { Text("Fecha de Disponibilidad (Date: YYYY-MM-DD)") },
+            isError = errorMensaje.contains("fecha", ignoreCase = true),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+
         ExposedDropdownMenuBox(
             expanded = expAsignatura,
             onExpandedChange = { expAsignatura = !expAsignatura }
@@ -91,7 +125,7 @@ fun FormularioOaScreen(
                 value = asignaturaSeleccionada,
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Asignatura (4 Niveles)") },
+                label = { Text("Asignatura") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expAsignatura) },
                 modifier = Modifier.menuAnchor().fillMaxWidth()
             )
@@ -111,66 +145,38 @@ fun FormularioOaScreen(
             }
         }
 
-        // Selección de Estado (Borrador, Aprobado, Publicado, Deshabilitado)
-        ExposedDropdownMenuBox(
-            expanded = expEstado,
-            onExpandedChange = { expEstado = !expEstado }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            OutlinedTextField(
-                value = estadoSeleccionado,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Estado del Recurso / OA") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expEstado) },
-                modifier = Modifier.menuAnchor().fillMaxWidth()
+            Checkbox(
+                checked = requiereAudio,
+                onCheckedChange = { requiereAudio = it }
             )
-            ExposedDropdownMenu(
-                expanded = expEstado,
-                onDismissRequest = { expEstado = false }
-            ) {
-                estados.forEach { item ->
-                    DropdownMenuItem(
-                        text = { Text(item) },
-                        onClick = {
-                            estadoSeleccionado = item
-                            expEstado = false
-                        }
-                    )
-                }
-            }
+            Text(text = "Incluir lectura por voz (Audio para 2° Básico)")
+        }
+
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = "Publicar actividad inmediatamente")
+            Switch(
+                checked = publicadoInmediato,
+                onCheckedChange = { publicadoInmediato = it }
+            )
         }
 
         OutlinedTextField(
             value = descripcion,
             onValueChange = { descripcion = it },
-            label = { Text("Explicación / Contenido") },
+            label = { Text("Descripción / Instrucciones") },
             modifier = Modifier.fillMaxWidth(),
-            minLines = 3
+            minLines = 2
         )
-
-        Text("Tipo de Recurso:", style = MaterialTheme.typography.bodyMedium)
-        Row {
-            recursos.forEach { rec ->
-                Row(modifier = Modifier.padding(end = 8.dp)) {
-                    RadioButton(
-                        selected = (recursoSeleccionado == rec),
-                        onClick = { recursoSeleccionado = rec }
-                    )
-                    Text(rec, modifier = Modifier.padding(top = 12.dp))
-                }
-            }
-        }
-
-        Text("Licenciamiento / Autoría:", style = MaterialTheme.typography.bodyMedium)
-        autorias.forEach { aut ->
-            Row {
-                RadioButton(
-                    selected = (autoriaSeleccionada == aut),
-                    onClick = { autoriaSeleccionada = aut }
-                )
-                Text(aut, modifier = Modifier.padding(top = 12.dp))
-            }
-        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -181,23 +187,22 @@ fun FormularioOaScreen(
             }
 
             Button(onClick = {
-                if (codigo.isBlank() || titulo.isBlank() || descripcion.isBlank()) {
-                    errorMensaje = "Todos los campos son obligatorios"
-                } else {
-                    val fechaActual = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
-                    val nuevoOa = OaEntity(
-                        codigo = codigo,
-                        titulo = titulo,
-                        asignatura = asignaturaSeleccionada,
-                        unidad = "Unidad 1",
-                        descripcion = descripcion,
-                        tipoRecurso = recursoSeleccionado,
-                        estado = estadoSeleccionado,
-                        autoria = autoriaSeleccionada,
-                        fechaModificacion = fechaActual
-                    )
-                    onGuardarOa(nuevoOa)
-                }
+                oaViewModel.validarYGuardarOa(
+                    codigo = codigo,
+                    titulo = titulo,
+                    intentosStr = intentosStr,
+                    fecha = fecha,
+                    requiereAudio = requiereAudio,
+                    publicadoInmediato = publicadoInmediato,
+                    asignatura = asignaturaSeleccionada,
+                    descripcion = descripcion,
+                    onExito = { nuevoOa ->
+                        onGuardarOa(nuevoOa)
+                    },
+                    onError = { mensajeError ->
+                        errorMensaje = mensajeError
+                    }
+                )
             }) {
                 Text("Guardar / Publicar")
             }
