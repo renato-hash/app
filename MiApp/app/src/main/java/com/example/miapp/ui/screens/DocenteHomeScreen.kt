@@ -1,49 +1,166 @@
 package com.example.miapp.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.miapp.data.OaEntity
+import com.example.miapp.data.ProgresoEntity
+import com.example.miapp.ui.components.SemaforoProgresoCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DocenteHomeScreen(
+    oasAutorizados: List<OaEntity>,
+    listaProgreso: List<ProgresoEntity>,
+    onGuardarObservacion: (Int, String) -> Unit,
     onVolver: () -> Unit,
     onVerOa: () -> Unit
 ) {
     Scaffold(
         topBar = { TopAppBar(title = { Text("Módulo Docente - 2.° Básico") }) }
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = "Bienvenido, Docente",
-                style = MaterialTheme.typography.headlineMedium
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = onVerOa,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Ver Objetivos de Aprendizaje (OAs)")
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Panel Pedagógico Reservado",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "OAs autorizados por UTP: ${oasAutorizados.size} | Evaluaciones rendidas: ${listaProgreso.size}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = onVerOa,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Consultar OAs Autorizados")
+                        }
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            item {
+                SemaforoProgresoCard(
+                    evaluacionesCompletadas = listaProgreso.size,
+                    puntajeObtenidoTotal = listaProgreso.sumOf { it.puntajeObtenido },
+                    puntajeMaximoTotal = listaProgreso.sumOf { it.puntajeTotal }
+                )
+            }
 
-            OutlinedButton(
-                onClick = onVolver,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Volver a Selección de Perfil")
+            item {
+                Text(
+                    text = "Informes de Progreso y Observaciones",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            if (listaProgreso.isEmpty()) {
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Aún no hay evaluaciones rendidas por estudiantes. Cuando un estudiante rinda una prueba, aquí aparecerá su desglose para tu validación pedagógica.",
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            } else {
+                items(listaProgreso) { informe ->
+                    var observacionInput by remember(informe.id) {
+                        mutableStateOf(
+                            if (informe.observacionDocente == "Sin observaciones registradas") ""
+                            else informe.observacionDocente
+                        )
+                    }
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "${informe.estudianteFicticio} • Intento #${informe.intentoNumero}",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "${informe.codigoOa}: ${informe.tituloOa}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Puntaje: ${informe.puntajeObtenido}/${informe.puntajeTotal} (${informe.porcentajeAvance}%)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Desglose: ${informe.detalleRespuestas}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                text = "Fecha/Hora: ${informe.marcaTiempo}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            OutlinedTextField(
+                                value = observacionInput,
+                                onValueChange = { observacionInput = it },
+                                label = { Text("Observación pedagógica del docente") },
+                                placeholder = { Text("Ej: Reforzar comprensión lectora...") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Button(
+                                onClick = { onGuardarObservacion(informe.id, observacionInput) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Done, contentDescription = null)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    if (informe.validadoPorDocente) "Informe Validado (Actualizar)"
+                                    else "Validar y Guardar Observación"
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                OutlinedButton(
+                    onClick = onVolver,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Volver a Selección de Perfil")
+                }
             }
         }
     }

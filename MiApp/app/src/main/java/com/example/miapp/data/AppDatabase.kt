@@ -5,8 +5,13 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [OaEntity::class], version = 2, exportSchema = false)
+@Database(
+    entities = [OaEntity::class, ProgresoEntity::class],
+    version = 2,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
+
     abstract fun oaDao(): OaDao
 
     companion object {
@@ -18,7 +23,7 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "mpaz_database"
+                    "mpaz_pro_database"
                 )
                     .fallbackToDestructiveMigration()
                     .build()
