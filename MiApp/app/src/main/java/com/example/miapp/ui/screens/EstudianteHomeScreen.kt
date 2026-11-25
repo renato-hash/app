@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import com.example.miapp.data.OaEntity
 import com.example.miapp.data.ProgresoEntity
 import com.example.miapp.ui.components.AudioDidacticoButton
+import com.example.miapp.ui.components.FeriadosCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -139,6 +140,10 @@ fun EstudianteHomeScreen(
                         )
                     }
                 }
+            }
+
+            item {
+                FeriadosCard()
             }
 
             item {
@@ -276,3 +281,4 @@ private fun MedallaItem(
         }
     }
 }
+

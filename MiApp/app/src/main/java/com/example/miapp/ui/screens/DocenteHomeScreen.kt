@@ -10,9 +10,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.miapp.data.OaEntity
 import com.example.miapp.data.ProgresoEntity
+import com.example.miapp.model.ProgresoRemote
 import com.example.miapp.ui.components.SemaforoProgresoCard
+import com.example.miapp.viewmodel.ProgresoViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,8 +24,12 @@ fun DocenteHomeScreen(
     listaProgreso: List<ProgresoEntity>,
     onGuardarObservacion: (Int, String) -> Unit,
     onVolver: () -> Unit,
-    onVerOa: () -> Unit
+    onVerOa: () -> Unit,
+    progresoViewModel: ProgresoViewModel = viewModel()
 ) {
+    val progresosRemotos by progresoViewModel.progresosList.collectAsState()
+    val mensajeRemoto by progresoViewModel.mensajeEstado.collectAsState()
+
     Scaffold(
         topBar = { TopAppBar(title = { Text("Módulo Docente - 2.° Básico") }) }
     ) { innerPadding ->
@@ -46,15 +53,35 @@ fun DocenteHomeScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "OAs autorizados por UTP: ${oasAutorizados.size} | Evaluaciones rendidas: ${listaProgreso.size}",
+                            text = "OAs autorizados por UTP: ${oasAutorizados.size} | Evaluaciones locales: ${listaProgreso.size} | Servidor: ${progresosRemotos.size}",
                             style = MaterialTheme.typography.bodyMedium
                         )
+                        mensajeRemoto?.let { msg ->
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = msg,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                         Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = onVerOa,
-                            modifier = Modifier.fillMaxWidth()
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("Consultar OAs Autorizados")
+                            Button(
+                                onClick = onVerOa,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Consultar OAs")
+                            }
+                            OutlinedButton(
+                                onClick = { progresoViewModel.cargarProgresos() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Sincronizar API")
+                            }
                         }
                     }
                 }
@@ -68,9 +95,69 @@ fun DocenteHomeScreen(
                 )
             }
 
+            if (progresosRemotos.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Registros Sincronizados en Microservicio (MySQL)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                items(progresosRemotos, key = { it.id ?: it.hashCode() }) { remoto ->
+                    var obsRemota by remember(remoto.id) {
+                        mutableStateOf(
+                            if (remoto.observacionDocente == "Sin observaciones registradas") ""
+                            else remoto.observacionDocente
+                        )
+                    }
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Text(
+                                text = "${remoto.estudianteFicticio} • ${remoto.codigoOa}: ${remoto.tituloOa}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Puntaje: ${remoto.puntajeObtenido}/${remoto.puntajeTotal} (${remoto.porcentajeAvance}%)",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = obsRemota,
+                                onValueChange = { obsRemota = it },
+                                label = { Text("Observación remota") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    remoto.id?.let { idLong ->
+                                        val actualizado: ProgresoRemote = remoto.copy(
+                                            observacionDocente = obsRemota.ifBlank { "Validado por docente" },
+                                            validadoPorDocente = true
+                                        )
+                                        progresoViewModel.actualizarProgreso(idLong, actualizado)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Done, contentDescription = null)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Validar en Servidor (PUT)")
+                            }
+                        }
+                    }
+                }
+            }
+
             item {
                 Text(
-                    text = "Informes de Progreso y Observaciones",
+                    text = "Informes de Progreso Locales y Observaciones",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
